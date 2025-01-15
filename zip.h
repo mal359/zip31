@@ -1339,7 +1339,7 @@ extern uzoff_t total_cd_total_entries; /* num entries across all archives */
 extern int sort_apple_double;   /* 1=sort Zip added "._" files after primary files */
 extern int sort_apple_double_all;/* 1=ignore AppleDouble zflag and sort all "._" files */
 
-#ifdef APPLE_XATTR                      /* -ax/--apple-ext-attr
+#ifdef APPLE_XATTR                      /* -ax/--apple-ext-attr */
 extern char **apl_dbl_xattr_ignore;     /* Names of ext attrs to ignore. */
 extern int apl_dbl_xattr_ignore_cnt;    /* Number of ext attrs to ignore. */
 #endif /* def APPLE_XATTR */
