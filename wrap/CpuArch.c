@@ -8,12 +8,12 @@
 */
 
 /*
- * Wrapper for "szip/Ppmd8Dec.c".
+ * Wrapper for "szip/CpuArch.c". MAL 2025
  */
 
-/* This sets PPMD_SUPPORT if PPMd enabled. */
+/* This sets LZMA_SUPPORT if LZMA enabled or PPMD_SUPPORT if PPMd enabled. */
 #include "../control.h"
 
-#ifdef PPMD_SUPPORT
-# include "../szip/Ppmd8Dec.c"
+#if defined(LZMA_SUPPORT) || defined(PPMD_SUPPORT)
+# include "../szip/CpuArch.c"
 #endif

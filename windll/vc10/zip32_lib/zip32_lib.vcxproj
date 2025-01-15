@@ -100,6 +100,7 @@
     <ClCompile Include="..\..\..\wrap\blocksort.c" />
     <ClCompile Include="..\..\..\wrap\bzlib.c" />
     <ClCompile Include="..\..\..\wrap\compress.c" />
+    <ClCompile Include="..\..\..\wrap\CpuArch.c" />
     <ClCompile Include="..\..\..\wrap\crctable.c" />
     <ClCompile Include="..\..\..\wrap\decompress.c" />
     <ClCompile Include="..\..\..\wrap\fileenc.c" />
@@ -147,12 +148,15 @@
     <ClInclude Include="..\..\..\crypt.h" />
     <ClInclude Include="..\..\..\ebcdic.h" />
     <ClInclude Include="..\..\..\revision.h" />
+    <ClInclude Include="..\..\..\szip\Compiler.h" />
     <ClInclude Include="..\..\..\szip\CpuArch.h" />
     <ClInclude Include="..\..\..\szip\LzFind.h" />
     <ClInclude Include="..\..\..\szip\LzHash.h" />
+    <ClInclude Include="..\..\..\szip\LzmaDec.h" />
     <ClInclude Include="..\..\..\szip\LzmaEnc.h" />
     <ClInclude Include="..\..\..\szip\Ppmd.h" />
     <ClInclude Include="..\..\..\szip\Ppmd8.h" />
+    <ClInclude Include="..\..\..\szip\Precomp.h" />
     <ClInclude Include="..\..\..\szip\SzVersion.h" />
     <ClInclude Include="..\..\..\szip\Types.h" />
     <ClInclude Include="..\..\..\tailor.h" />
