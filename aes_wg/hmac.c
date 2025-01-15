@@ -89,7 +89,10 @@ void hmac_sha1_data(const unsigned char data[], unsigned int data_len, hmac_ctx 
         }
 
         /* pad the key if necessary */
-        memset(cx->key + cx->klen, 0, IN_BLOCK_LENGTH - cx->klen);
+        if (cx->klen < IN_BLOCK_LENGTH)
+        {
+            memset(cx->key + cx->klen, 0, IN_BLOCK_LENGTH - cx->klen);
+        }
 
         /* xor ipad into key value  */
         for(i = 0; i < (IN_BLOCK_LENGTH >> 2); ++i)
