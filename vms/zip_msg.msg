@@ -3,7 +3,7 @@
 !    VMS Error Message Source File for Zip
 !
 !----------------------------------------------------------------------
-! Copyright (c) 2007-2014 Info-ZIP.  All rights reserved.
+! Copyright (c) 2007-2024 Info-ZIP.  All rights reserved.
 !
 ! See the accompanying file LICENSE, version 2009-Jan-2 or later (the
 ! contents of which are also included in zip.h) for terms of use.  If,
@@ -39,9 +39,9 @@ LOGIC       /FATAL    <Internal logic error>
 .BASE 12
 BIG         /ERROR    <Entry too big to split, read, or write>
 .BASE 14
-NOTE        /ERROR    <Invalid comment format>
+NOTE        /ERROR    <Invalid comment file format>
 .BASE 16
-TEST        /FATAL    <Zip file invalid, could not spawn unzip, or wrong unzip>
+TEST        /FATAL    <Zip file invalid or test error>
 .BASE 18
 ABORT       /ERROR    <Interrupted>
 .BASE 20
@@ -74,5 +74,9 @@ BACKUP      /ERROR    <Backup error>
 DEPTH       /ERROR    <Recursion depth limit exceeded>
 .BASE 50
 SPLIT       /ERROR    <Attempt to read unsupported split archive>
+.BASE 52
+UNZIP       /ERROR    <Could not run unzip or incompatible unzip>
+.BASE 54
+PATH        /ERROR    <Bad name or path>
 
 .END

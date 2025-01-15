@@ -2,7 +2,7 @@ $! BUILD_ZIP.COM
 $!
 $!     Zip 3.1 for VMS -- DCL Build procedure.
 $!
-$!     Last revised:  2022-07-16  SMS.
+$!     Last revised:  2022-10-24  SMS.
 $!
 $!----------------------------------------------------------------------
 $! Copyright (c) 2004-2022 Info-ZIP.  All rights reserved.
@@ -68,7 +68,7 @@ $!     - Force installation of UNIX interface version of Zip
 $!       (override LOCAL_ZIP environment): "NOVMSCLI" or "NOCLI"
 $!     - Build a callable-Zip library, LIBIZZIP.OLB: "LIBZIP"
 $!     - Choose a destination directory for architecture-specific
-$!       product files (.EXE, .OBJ,.OLB, and so on): "PROD=subdir", to
+$!       product files (.EXE, .OBJ, .OLB, and so on): "PROD=subdir", to
 $!       use "[.subdir]".  The default is a name automatically generated
 $!       using rules defined below.
 $!     - Show version/feature reports: "DASHV", "SLASHV"
@@ -486,7 +486,7 @@ $     if (LARGE_FILE .gt. 0)
 $     then
 $        say "LARGE_FILE_SUPPORT is not available on VAX."
 $     endif
-      LARGE_FILE = -1
+$     LARGE_FILE = -1
 $!
 $     if (NOLZMA .le. 0)
 $     then
