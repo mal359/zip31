@@ -855,20 +855,20 @@ void version_local()
 #  elif defined(__GO32__)
       "djgpp v1.x / gcc ",
 #  elif defined(__EMX__)            /* ...so is __EMX__ (double sigh) */
-      "emx+gcc ",
+      "emx/gcc ",
 #  else
       "gcc ",
 #  endif
       __VERSION__,
 #elif defined(__WATCOMC__)
-#  if (__WATCOMC__ % 10 > 0)
+#  if (__WATCOMC__ >= 1200)
 /* We do this silly test because __WATCOMC__ gives two digits for the  */
 /* minor version, but Watcom packaging prefers to show only one digit. */
-      (sprintf(buf, "Watcom C/C++ %d.%02d", __WATCOMC__ / 100,
-               __WATCOMC__ % 100), buf), "",
+      (sprintf(buf, "Open Watcom C %d.%d", (__WATCOMC__/100)-11,
+               (__WATCOMC__%100)/10), buf), "",
 #  else
-      (sprintf(buf, "Watcom C/C++ %d.%d", __WATCOMC__ / 100,
-               (__WATCOMC__ % 100) / 10), buf), "",
+      (sprintf(buf, "Watcom C %d.%d", __WATCOMC__ / 100,
+               __WATCOMC__ % 100), buf), "",
 #  endif
 #elif defined(__TURBOC__)
 #  ifdef __BORLANDC__

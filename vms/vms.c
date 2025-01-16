@@ -463,7 +463,11 @@ void version_local()
     printf(CompiledWith,
 
 #ifdef __GNUC__
+#  ifdef __clang__
+      "LLVM Clang ", __VERSION__,
+#  else
       "gcc ", __VERSION__,
+#  endif
 #else
 #  if defined(DECC) || defined(__DECC) || defined (__DECC__)
       "DEC C",

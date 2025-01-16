@@ -2212,8 +2212,8 @@ local void help_extended()
 "  pause and read the comment as wide characters, then convert to UTF-8.",
 "  Setting UTF-8 comments using -c=, -cc, -z= and -zz supported.",
 "",
-"Unix Apple (Mac OS X):",
-"  On a Unix Apple system, Zip reads resource information and stores it in",
+"macOS:",
+"  On a macOS system, Zip reads resource information and stores it in",
 "  AppleDouble format.  This format uses \"._\" files to store meta data",
 "  such as the resource fork.  This format should be compatible with ditto",
 "  and similar utilities.",
@@ -2227,14 +2227,14 @@ local void help_extended()
 "    -ad       Sort file system \"._\" files after matching primary file",
 "  This option treats file system \"._\" files as AppleDouble files, sorting",
 "  them after the file they apparently go with.  This can be useful when a",
-"  Unix Apple archive is unpacked on another platform, edited, and then zipped",
-"  up for use again on a Unix Apple system.  Using -ad should recreate a valid",
-"  ditto compatible archive.  Note that Zip only generates AppleDouble files",
-"  on Unix Apple systems.  On these OS, the sorting of AppleDouble files after",
+"  macOS archive is unpacked on another platform, edited, and then zipped up",
+"  for use again on a macOS system.  Using -ad should recreate a valid ditto-",
+"  compatible archive.  Note that Zip only generates AppleDouble files on",
+"  macOS systems.  On these machines, the sorting of AppleDouble files after",
 "  the files they go with is automatic.  Using -ad sorts both Zip generated",
 "  and existing file system \"._\" files as AppleDouble files.  Negating",
-"  (-ad-) disables AppleDouble sorting on MacOS X.  (-ad- is the default on",
-"  other OS.)",
+"  (-ad-) disables AppleDouble sorting on macOS.  (-ad- is the default on",
+"  other machines.)",
 "    -df       Save data fork only",
 "  Only save the main (data) file.  Resource fork information is not saved",
 "  (no AppleDouble \"._\" files are stored in the archive).",
@@ -5223,7 +5223,7 @@ int simple_encr_passwd(modeflag, pwbuf, bufsize)
 int set_filetype(out_path)
   char *out_path;
 {
-#ifdef __BEOS__
+#if defined(__BEOS__) || defined(__HAIKU__)
   /* Set the filetype of the zipfile to "application/zip" */
   setfiletype( out_path, "application/zip" );
 #endif

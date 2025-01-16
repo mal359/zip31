@@ -1355,7 +1355,9 @@ int getch_win32(void)
 void version_local()
 {
     static ZCONST char CompiledWith[] = "Compiled with %s%s for %s%s%s.\n\n";
-#if (defined(_MSC_VER) || defined(__WATCOMC__) || defined(__DJGPP__))
+#if (defined(_MSC_VER) || defined(__WATCOMC__) || defined(__DJGPP__) \
+    || defined(__SC__) || defined(__ICC) || defined(__PGIC__) \
+	|| defined(__POCC__) || defined(__ghs__) || defined(__BORLANDC__))
     char buf[80];
 #if (defined(_MSC_VER) && (_MSC_VER > 900))
     char buf2[80];
@@ -1373,8 +1375,28 @@ void version_local()
 #    define COMPILER_NAME2      "(Windows NT v3.5 SDK)"
 #  elif (_MSC_VER == 900)
 #    define COMPILER_NAME2      "(Visual C++ v2.x)"
-#  elif (_MSC_VER > 900)
+#  elif (900 < _MSC_VER && _MSC_VER <= 1800)
     sprintf(buf2, "(Visual C++ v%d.%d)", _MSC_VER/100 - 6, _MSC_VER%100/10);
+#  elif (_MSC_VER == 1900)
+#    define COMPILER_NAME2          "(Visual C++ v14.0)"
+#  elif (_MSC_VER == 1910)
+#    define COMPILER_NAME2          "(Visual C++ v15.0)"
+#  elif (_MSC_VER == 1911)
+#    define COMPILER_NAME2          "(Visual C++ v15.3)"
+#  elif (1912 <= _MSC_VER && _MSC_VER < 1920)
+    sprintf(buf2, "(Visual C++ v%d.%d)", _MSC_VER/100 - 4, _MSC_VER%100 - 7);
+#  elif (1920 <= _MSC_VER && _MSC_VER < 1927)
+    sprintf(buf2, "(Visual C++ v%d.%d)", _MSC_VER/100 - 3, _MSC_VER%100 - 20);
+#  elif (192829333 <= _MSC_FULL_VER && _MSC_FULL_VER < 192829910)
+#    define COMPILER_NAME2          "(Visual C++ v16.8)"
+#  elif (192829910 <= _MSC_FULL_VER && _MSC_FULL_VER < 192929917)
+#    define COMPILER_NAME2          "(Visual C++ v16.9)"
+#  elif (192929917 <= _MSC_FULL_VER && _MSC_FULL_VER < 192930129)
+#    define COMPILER_NAME2          "(Visual C++ v16.10)"
+#  elif (192930129 <= _MSC_FULL_VER && _MSC_FULL_VER < 193000000)
+#    define COMPILER_NAME2          "(Visual C++ v16.11)"
+#  elif (_MSC_VER >= 1930)
+	sprintf(buf2, "(Visual C++ v%d.%d)", _MSC_VER/100 - 2, _MSC_VER%100 - 30);
 #   ifdef CONFIG_PLATFORM
     sprintf(buf3, "%s [%s]", buf2, CONFIG_PLATFORM);
 #   else
@@ -1385,40 +1407,50 @@ void version_local()
 #    define COMPILER_NAME2      "(bad version)"
 #  endif
 #elif defined(__WATCOMC__)
-#  if (__WATCOMC__ % 10 > 0)
+#  if (__WATCOMC__ >= 1200)
 /* We do this silly test because __WATCOMC__ gives two digits for the  */
 /* minor version, but Watcom packaging prefers to show only one digit. */
-    sprintf(buf, "Watcom C/C++ %d.%02d", __WATCOMC__ / 100,
-            __WATCOMC__ % 100);
-#  else
-    sprintf(buf, "Watcom C/C++ %d.%d", __WATCOMC__ / 100,
+    sprintf(buf, "Open Watcom C %d.%d", (__WATCOMC__ / 100) - 11,
             (__WATCOMC__ % 100) / 10);
-#  endif /* __WATCOMC__ % 10 > 0 */
+#  else
+    sprintf(buf, "Watcom C %d.%d", __WATCOMC__ / 100, __WATCOMC__ % 100);
+#  endif /* __WATCOMC__ >= 1200 */
 #  define COMPILER_NAME1        buf
 #  define COMPILER_NAME2        ""
 #elif defined(__TURBOC__)
 #  ifdef __BORLANDC__
+#   if (0x0590 <= __BORLANDC__ && __BORLANDC__ < 0x0620)
+#    define COMPILER_NAME1      "CodeGear C++"
+#   elif (0x0620 <= __BORLANDC__)
+#    define COMPILER_NAME1      "Embarcadero C++"
+#   else
 #    define COMPILER_NAME1      "Borland C++"
-#    if (__BORLANDC__ == 0x0452)   /* __BCPLUSPLUS__ = 0x0320 */
+#   endif
+#    if (__BORLANDC__ < 0x0200)   /* __BCPLUSPLUS__ = 0x0320 */
+#      define COMPILER_NAME2    " 1.0"
+#    elif (__BORLANDC__ == 0x0200)   /* __BCPLUSPLUS__ = 0x0320 */
+#      define COMPILER_NAME2    " 2.0"
+#    elif (__BORLANDC__ == 0x0400)   /* __BCPLUSPLUS__ = 0x0320 */
+#      define COMPILER_NAME2    " 3.0"
+#    elif (__BORLANDC__ == 0x0410)   /* __BCPLUSPLUS__ = 0x0320 */
+#      define COMPILER_NAME2    " 3.1"
+#    elif (__BORLANDC__ == 0x0452)   /* __BCPLUSPLUS__ = 0x0320 */
 #      define COMPILER_NAME2    " 4.0 or 4.02"
 #    elif (__BORLANDC__ == 0x0460)   /* __BCPLUSPLUS__ = 0x0340 */
 #      define COMPILER_NAME2    " 4.5"
-#    elif (__BORLANDC__ == 0x0500)   /* __TURBOC__ = 0x0500 */
-#      define COMPILER_NAME2    " 5.0"
-#    elif (__BORLANDC__ == 0x0520)   /* __TURBOC__ = 0x0520 */
-#      define COMPILER_NAME2    " 5.2 (C++ Builder 1.0)"
-#    elif (__BORLANDC__ == 0x0530)   /* __BCPLUSPLUS__ = 0x0530 */
-#      define COMPILER_NAME2    " 5.3 (C++ Builder 3.0)"
-#    elif (__BORLANDC__ == 0x0540)   /* __BCPLUSPLUS__ = 0x0540 */
-#      define COMPILER_NAME2    " 5.4 (C++ Builder 4.0)"
-#    elif (__BORLANDC__ == 0x0550)   /* __BCPLUSPLUS__ = 0x0550 */
-#      define COMPILER_NAME2    " 5.5 (C++ Builder 5.0)"
+#    elif ((0x0500 <= __BORLANDC__ && __BORLANDC__ < 0x0562) \
+           && __BORLANDC__ != 0x0551)
+#      define COMPILER_NAME2    " %X.%X", (__BORLANDC__ >> 8), \
+                                 ((__BORLANDC__ & 0xFF) / 0x10)
 #    elif (__BORLANDC__ == 0x0551)   /* __BCPLUSPLUS__ = 0x0551 */
-#      define COMPILER_NAME2    " 5.5.1 (C++ Builder 5.0.1)"
-#    elif (__BORLANDC__ == 0x0560)   /* __BCPLUSPLUS__ = 0x0560 */
-#      define COMPILER_NAME2    " 5.6 (C++ Builder 6)"
+#      define COMPILER_NAME2    " 5.5.1"
+#    elif (__BORLANDC__ == 0x0562)   /* __BCPLUSPLUS__ = 0x0562 */
+#      define COMPILER_NAME2    " 5.6.4"
+#    elif (0x0562 < __BORLANDC__)
+#      define COMPILER_NAME2    " %X.%X", (__BORLANDC__ >> 8), \
+                                 (__BORLANDC__ & 0xFF)
 #    else
-#      define COMPILER_NAME2    " later than 5.6"
+#      define COMPILER_NAME2    " (I think)"
 #    endif
 #  else /* !__BORLANDC__ */
 #    define COMPILER_NAME1      "Turbo C"
@@ -1429,7 +1461,23 @@ void version_local()
 #    endif
 #  endif /* __BORLANDC__ */
 #elif defined(__GNUC__)
-#  ifdef __RSXNT__
+#  ifdef __INTEL_COMPILER /* Truly noxious */
+#    if (__INTEL_COMPILER < 2021)
+    sprintf(buf, "Intel C++ %d.%d", __INTEL_COMPILER / 100,
+            (__INTEL_COMPILER % 100) / 10),
+#    else
+    sprintf(buf, "Intel C++ Compiler Classic %d.%d", __INTEL_COMPILER / 100, 
+            (__INTEL_COMPILER % 1000) / 100),
+#    endif
+#  elif defined(__clang__)
+#    if defined(__CODEGEARC__)
+    "Embarcadero C++ (Clang-ehnanced) ", __VERSION__,
+#    elif defined(__INTEL_LLVM_COMPILER)
+    "Intel LLVM Compiler ", __VERSION__,
+#    else
+    "Clang/LLVM ", __VERSION__,
+#    endif
+#  elif defined(__RSXNT__)
 #    if (defined(__DJGPP__) && !defined(__EMX__))
     sprintf(buf, "rsxnt(djgpp v%d.%02d) / gcc ",
             __DJGPP__, __DJGPP_MINOR__);
@@ -1448,15 +1496,41 @@ void version_local()
 #      define COMPILER_NAME1    "rsxnt(unknown) / gcc "
 #    endif
 #  elif defined(__CYGWIN__)
-#      define COMPILER_NAME1    "Cygnus win32 / gcc "
+#      define COMPILER_NAME1    "Cygwin / gcc "
 #  elif defined(__MINGW32__)
+#    elif defined(__MINGW64__)
+#      define COMPILER_NAME1    "MinGW-64 / gcc "
+#    else
 #      define COMPILER_NAME1    "mingw32 / gcc "
+#    endif
 #  else
 #      define COMPILER_NAME1    "gcc "
 #  endif
 #  define COMPILER_NAME2        __VERSION__
+#elif defined(__POCC__) /* Does Pelles C define __LCC__? Who knows. */
+    sprintf(buf, "Pelles C %d.%d", __POCC__/100, __POCC__%100),
 #elif defined(__LCC__)
 #  define COMPILER_NAME1        "LCC-Win32"
+#  define COMPILER_NAME2        ""
+#elif defined(__PGIC__)
+	sprintf(buf, "Portland Group C %d.%d.%d", __PGIC__, __PGIC_MINOR__, 
+       __PGIC_PATCHLEVEL__),
+#elif defined(__SC__)
+#  if defined(__DMC__)
+    sprintf(buf, "Digital Mars C %X.%X", __DMC__ >> 8, __DMC__ & 0xFF),
+#  else
+    sprintf(buf, "Symantec C++ %X.%X", __SC__ >> 8, __SC__ & 0xFF),
+#  endif
+#elif defined(__IBMC__)
+    sprintf(buf, "IBM VisualAge C++ %d.%02d", __IBMC__/100,__IBMC__%100),
+#elif defined(__HIGHC__)
+#  define COMPILER_NAME1        "Metaware High C"
+#  define COMPILER_NAME2        ""
+#elif defined(__ghs__)
+    sprintf(buf, "Green Hills C %d.%d.%d", __GHS_VERSION_NUMBER__ / 100, 
+       (__GHS_VERSION_NUMBER__ / 10) % 10, __GHS_VERSION_NUMBER__ % 10),
+#elif defined(__ORANGEC__)
+#  define COMPILER_NAME1        "Orange C"
 #  define COMPILER_NAME2        ""
 #else
 #  define COMPILER_NAME1        "unknown compiler (SDK?)"
@@ -1471,11 +1545,33 @@ void version_local()
 #endif
 
 #ifdef _WIN64
+#  ifdef _IA64_
     zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
-           "\nWindows NT", " (64-bit)", COMPILE_DATE);
+           "\nWindows NT", " (Itanium)", COMPILE_DATE);
+#  elif defined _aarch64_
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows NT", " (ARM 64-bit)", COMPILE_DATE);
+#  else /* _AMD64_ */
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows NT", " (x64)", COMPILE_DATE);
+#  endif
 #else
+#  ifdef _MIPS_
     zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
-           "\nWindows 9x / Windows NT", " (32-bit)", COMPILE_DATE);
+           "\nWindows NT", " (Jazz)", COMPILE_DATE);
+#  elif defined _ALPHA_
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows NT", " (Alpha AXP)", COMPILE_DATE);
+#  elif defined _PPC_
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows NT", " (PowerPC)", COMPILE_DATE);
+#  elif defined _ARM_
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows RT", " (ARM)", COMPILE_DATE);
+#  else /* _i386_ */
+    zprintf(CompiledWith, COMPILER_NAME1, COMPILER_NAME2,
+           "\nWindows 9x / NT", " (Intel)", COMPILE_DATE);
+#  endif
 #endif
 
     return;

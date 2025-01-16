@@ -16,7 +16,7 @@ static char DuplicVolumeNote[] = {
     "\rIMPORTANT NOTE:" \
     "\r" \
     "\r This port has one weak point: It is based on pathnames !! " \
-    "\r Because it's a port !! Unlike MacOS: As far as I know all other "\
+    "\r Because it's a port !! Unlike Macintosh: As far as I know all other "\
     "\r Operatingsystems  (eg.: Unix, DOS, OS/2, ...) are based on pathnames" \
     "\r " \
     /* a short quote from "Inside Macintintosh, Files"; slightly modified by me */
@@ -47,7 +47,7 @@ static char DuplicVolumeNote[] = {
     "\r" \
     "\r" \
     "\r The main reason is that an attempt to implement support exact saving of" \
-    "\r the MacOS specific internal file-structures would require a throughout" \
+    "\r the Macintosh-specific internal file-structures would require a throughout" \
     "\r rewrite of major parts of shared code, probably sacrifying compatibility" \
     "\r with other systems." \
     "\r I have no solution at the moment. The port will just warn you if you try" \

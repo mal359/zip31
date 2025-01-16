@@ -241,6 +241,12 @@
 #include "macos/osdep.h"
 #endif
 
+#ifdef __HAIKU__
+#undef local
+#include <sys/types.h>
+#define local static
+#endif
+
 #ifdef NLM
 #include "novell/osdep.h"
 #endif
@@ -1306,7 +1312,7 @@ typedef struct ztimbuf {
 #ifdef MVS
 #  define OS_CODE  0xf00
 #endif
-#ifdef __BEOS__
+#if defined(__BEOS__) || defined(__HAIKU__)
 #  define OS_CODE  0x1000
 #endif
 #ifdef TANDEM
@@ -1314,6 +1320,10 @@ typedef struct ztimbuf {
 #endif
 #ifdef THEOS
 #  define OS_CODE  0x1200
+#endif
+/* Yes, macOS (X) has its own */
+#ifdef __APPLE__
+#  define OS_CODE  0x1300
 #endif
 /* Yes, there is a gap here. */
 #ifdef __ATHEOS__

@@ -803,15 +803,21 @@ typedef struct option_flag_struct option_flag;
 /* Extra field block ID codes (tags): */
 #define EF_ACL          0x4C41   /* ACL, access control list ("AL") */
 #define EF_AES_WG       0x9901   /* AES (WinZip/Gladman) encryption ("c^!") */
+#define EF_ANDROID      0xd935   /* Android */
 #define EF_AOSVS        0x5356   /* AOS/VS ("VS") */
 #define EF_ATHEOS       0x7441   /* AtheOS ("At") */
 #define EF_BEOS         0x6542   /* BeOS ("Be") */
+#define EF_IZMAC        0x334d   /* Info-ZIP Macintosh */
 #define EF_IZUNIX       0x5855   /* UNIX ("UX") */
 #define EF_IZUNIX2      0x7855   /* Info-ZIP's new Unix ("Ux") */
+#define EF_IZUNIX3      0x7875   /* Info-ZIP's newest Unix ("Ux") */
+#define EF_JAVA         0xcafe   /* Java JAR */
 #define EF_MVS          0x470f   /* MVS ("G")   */
 #define EF_NTSD         0x4453   /* NT Security Descriptor ("SD") */
 #define EF_OS2EA        0x0009   /* OS/2 (extended attributes) */
+#define EF_PIXAR        0x1986   /* Pixar USD */
 #define EF_QDOS         0xfb4a   /* SMS/QDOS ("J\373") */
+#define EF_SMARTY       0x4d63   /* SmartZIP */
 #define EF_SPARK        0x4341   /* David Pilling's Acorn/SparkFS ("AC") */
 #define EF_TANDEM       0x4154   /* Tandem NSK ("TA") */
 #define EF_THEOS        0x6854   /* THEOS ("Th") */
@@ -819,6 +825,9 @@ typedef struct option_flag_struct option_flag;
 #define EF_UTFPTH       0x7075   /* Unicode UTF-8 path ("up") */
 #define EF_VMCMS        0x4704   /* VM/CMS Extra Field ID ("G")*/
 #define EF_ZIP64        0x0001   /* ID for zip64 extra field */
+#define EF_ZIPIT        0x2605   /* ZipIt */
+#define EF_ZIPIT1       0x2705   /* ZipIt 1.3.5+ */
+#define EF_ZIPIT2       0x2805   /* ZipIt 1.3.5+ */
 
 #define EF_STREAM       0x6C78   /* Extended Local Header (Stream) ("xl") */
 

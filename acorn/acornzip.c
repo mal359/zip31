@@ -572,6 +572,10 @@ void version_local()
 #ifdef __GNUC__
       "gcc ", __VERSION__,
 #else
+#  ifdef __CC_ARM
+      "Acorn C/C++ ", printf("%d.%d", ARMCC_VERSION / 100000, 
+        (ARMCC_VERSION  % 100000) / 10000),
+#  else
 #  ifdef __CC_NORCROFT
       "Norcroft ", "cc",
 #  else
@@ -581,7 +585,7 @@ void version_local()
 
       "RISC OS",
 
-      " (Acorn Computers Ltd)",
+      " (Acorn Computers Ltd.)",
 
 #if defined( __DATE__) && !defined( NO_BUILD_DATE)
       " on ", __DATE__

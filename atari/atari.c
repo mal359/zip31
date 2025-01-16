@@ -651,26 +651,35 @@ void version_local()
     printf(CompiledWith,
 
 #ifdef __GNUC__
-      "gcc ", __VERSION__,
+      "GNU C ", __VERSION__,
 #else
+#  ifdef LATTICE
+      "Lattice C", 
+#  else
 #  if 0
       "cc ", (sprintf(buf, " version %d", _RELEASE), buf),
 #  else
 #  ifdef __TURBOC__
-      "Turbo C", (sprintf(buf, " (0x%04x = %d)", __TURBOC__, __TURBOC__), buf),
+#   ifdef __PUREC__
+      "Pure C", (sprintf(buf, " (0x%04x = %d)", __PUREC__, __PUREC__), buf),
+#   else
+	  "Turbo C", (sprintf(buf, " (0x%04x = %d)", __TURBOC__, __TURBOC__), buf),
+#   endif
 #  else
       "unknown compiler", "",
 #  endif
 #  endif
+# endif
+#endif
 #endif
 
 #ifdef __MINT__
-      "Atari TOS/MiNT",
+      "MiNT",
 #else
       "Atari TOS",
 #endif
 
-      " (Atari ST/TT/Falcon030)",
+      " (Atari ST/TT/Falcon)",
 
 #if defined( __DATE__) && !defined( NO_BUILD_DATE)
       " on ", __DATE__

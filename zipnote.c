@@ -100,7 +100,7 @@ void zipnotewarn(ZCONST char *a, ZCONST char *b);
 int set_filetype(out_path)
   char *out_path;
 {
-#ifdef __BEOS__
+#if defined(__BEOS__) || defined(__HAIKU__)
   /* Set the filetype of the zipfile to "application/zip" */
   setfiletype( out_path, "application/zip" );
 #endif

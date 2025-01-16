@@ -1111,7 +1111,7 @@ void version_local()
 
 #ifdef __GNUC__
 #  ifdef __EMX__  /* __EMX__ is defined as "1" only (sigh) */
-      "emx+gcc ", __VERSION__,
+      "emx/gcc ", __VERSION__,
 #  else
       "gcc/2 ", __VERSION__,
 #  endif
@@ -1122,10 +1122,16 @@ void version_local()
 #  elif (__IBMC__ < 300)
       (sprintf(buf, "C Set++ %d.%02d", __IBMC__/100,__IBMC__%100), buf),
 #  else
-      (sprintf(buf, "Visual Age C++ %d.%02d", __IBMC__/100,__IBMC__%100), buf),
+      (sprintf(buf, "VisualAge C++ %d.%02d", __IBMC__/100,__IBMC__%100), buf),
 #  endif
 #elif defined(__WATCOMC__)
+#  if (__WATCOMC__ >= 1200)
+      "Open Watcom C", (sprintf(buf, " (__WATCOMC__ = %d)", __WATCOMC__), buf),
+#  else
       "Watcom C", (sprintf(buf, " (__WATCOMC__ = %d)", __WATCOMC__), buf),
+#  endif
+#elif defined(__HIGHC__)
+	  "Metaware High C ",
 #elif defined(__TURBOC__)
 #  ifdef __BORLANDC__
       "Borland C++",
@@ -1179,7 +1185,7 @@ void version_local()
       " (16-bit)",
 #  endif
 #else
-      " 2.x/3.x (32-bit)",
+      " (32-bit)",
 #endif
 
 #if defined( __DATE__) && !defined( NO_BUILD_DATE)

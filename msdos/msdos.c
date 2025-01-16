@@ -837,7 +837,7 @@ static ZCONST char CompiledWith[] = "Compiled with %s%s for %s%s%s.\n\n";
 void version_local()
 {
 #if defined(__DJGPP__) || defined(__WATCOMC__) || \
-    (defined(_MSC_VER) && (_MSC_VER != 800))
+    (defined(_MSC_VER) && (_MSC_VER != 800)) || defined(__ZTC__)
     char buf[80];
 #endif
 
@@ -851,18 +851,28 @@ void version_local()
 #  elif defined(__EMX__)          /* ...so is __EMX__ (double sigh) */
 #    define COMPILER_NAME1      "emx+gcc "
 #  else
-#    define COMPILER_NAME1      "gcc "
+#    define COMPILER_NAME1      "GNU C "
 #  endif
 #  define COMPILER_NAME2        __VERSION__
+#elif defined(__HIGHC__)
+      "Metaware High C ", 
+#elif defined(__PACIFIC__)
+      "HI-TECH Pacific C ",
+#elif defined(AZTEC_C)
+      "Manx Aztec C ",
+#elif defined(LATTICE)
+      "Lattice C ",
+#elif defined(__ORANGEC__)
+      "Orange C ", __VERSION__,
 #elif defined(__WATCOMC__)
-#  if (__WATCOMC__ % 10 > 0)
+#  if (__WATCOMC__ >= 1200)
 /* We do this silly test because __WATCOMC__ gives two digits for the  */
 /* minor version, but Watcom packaging prefers to show only one digit. */
-    sprintf(buf, "Watcom C/C++ %d.%02d", __WATCOMC__ / 100,
-            __WATCOMC__ % 100);
+    sprintf(buf, "Open Watcom C %d.%d"", (__WATCOMC__/100)-11,
+            (__WATCOMC__%100)/10);
 #  else
-    sprintf(buf, "Watcom C/C++ %d.%d", __WATCOMC__ / 100,
-            (__WATCOMC__ % 100) / 10);
+    sprintf(buf, "Watcom C %d.%d", __WATCOMC__ / 100,
+            __WATCOMC__ % 100);
 #  endif
 #  define COMPILER_NAME1        buf
 #  define COMPILER_NAME2        ""
@@ -883,8 +893,10 @@ void version_local()
 #      define COMPILER_NAME2    " 4.5"
 #    elif (__BORLANDC__ == 0x0500)   /* __TURBOC__ = 0x0500 */
 #      define COMPILER_NAME2    " 5.0"
+#    elif (__BORLANDC__ == 0x0520)   /* __TURBOC__ = 0x0500 */
+#      define COMPILER_NAME2    " 5.2"
 #    else
-#      define COMPILER_NAME2    " later than 5.0"
+#      define COMPILER_NAME2    " (I think)"
 #    endif
 #  else
 #    define COMPILER_NAME1      "Turbo C"
@@ -923,6 +935,16 @@ void version_local()
 #      define COMPILER_NAME2    "5.1 or earlier"
 #    endif
 #  endif
+#elif defined(__ZTC__)
+#  if defined(__SC__)
+      "Symantec C++", (sprintf(buf, " %X.%X", __SC__>>8, __SC__&0xFF), buf),
+#  else
+      "Zortech C++", (sprintf(buf, " %X.%Xr%X", __ZTC__>>8,
+        (__ZTC__>>4)&0xF, __ZTC__&0xF), buf),
+#  endif
+#elif defined(__POWERC)
+      "MIX Power C", (sprintf(buf, "%d.%d.%d",
+        __POWERC/100, (__POWERC / 10) % 10, __POWERC % 10), buf),
 #else
 #    define COMPILER_NAME1      "unknown compiler"
 #    define COMPILER_NAME2      ""
@@ -931,27 +953,27 @@ void version_local()
 /* Define the OS name and memory environment strings */
 #if defined(__WATCOMC__) || defined(__TURBOC__) || defined(MSC) || \
     defined(__GNUC__)
-#  define OS_NAME1      "\nMS-DOS"
+#  define OS_NAME1      "\nDOS"
 #else
-#  define OS_NAME1      "MS-DOS"
+#  define OS_NAME1      "DOS"
 #endif
 
 #if (defined(__GNUC__) || (defined(__WATCOMC__) && defined(__386__)))
-#  define OS_NAME2      " (32-bit)"
+#  define OS_NAME2      " (Protected Mode)"
 #elif defined(M_I86HM) || defined(__HUGE__)
-#  define OS_NAME2      " (16-bit, huge)"
+#  define OS_NAME2      " (Real Mode, huge)"
 #elif defined(M_I86LM) || defined(__LARGE__)
-#  define OS_NAME2      " (16-bit, large)"
+#  define OS_NAME2      " (Real Mode, large)"
 #elif defined(M_I86MM) || defined(__MEDIUM__)
-#  define OS_NAME2      " (16-bit, medium)"
+#  define OS_NAME2      " (Real Mode, medium)"
 #elif defined(M_I86CM) || defined(__COMPACT__)
-#  define OS_NAME2      " (16-bit, compact)"
+#  define OS_NAME2      " (Real Mode, compact)"
 #elif defined(M_I86SM) || defined(__SMALL__)
-#  define OS_NAME2      " (16-bit, small)"
+#  define OS_NAME2      " (Real Mode, small)"
 #elif defined(M_I86TM) || defined(__TINY__)
-#  define OS_NAME2      " (16-bit, tiny)"
+#  define OS_NAME2      " (Real Mode, tiny)"
 #else
-#  define OS_NAME2      " (16-bit)"
+#  define OS_NAME2      " (Real Mode)"
 #endif
 
 /* Define the compile date string */

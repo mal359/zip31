@@ -52,7 +52,8 @@
 #  define GLOBAL(g) G.g
 #endif
 
-#if (defined(__ATHEOS__) || defined(__BEOS__))  /* why yes, we do */
+#if (defined(__ATHEOS__) || defined(__BEOS__) \   /* why yes, we do */
+     || defined(__HAIKU__))                        /* us, too */
 #  define HAVE_TERMIOS_H
 #endif
 
@@ -529,8 +530,8 @@ int zgetch(__G__ f)
  * uses the infrastructure that is already in place in filedate.c, it is
  * smaller.  With this function, echoff() and echon() are not needed.
  *
- * For the MAC, a non-echo macgetch() function is defined in the MacOS
- * specific sources which uses the event handling mechanism of the
+ * For the MACINTOSH, a non-echo macgetch() function is defined in the 
+ * Macintosh-specific sources which uses the event handling mechanism of the
  * desktop window manager to get a character from the keyboard.
  *
  * For the other systems in this section, a non-echo getch() function

@@ -44,6 +44,13 @@
 #  endif
 #endif /* HAVE_DIRENT_H || _POSIX_VERSION */
 
+#ifdef __HAIKU__
+#include <errno.h>
+#include <fs_attr.h>
+#include <Mime.h>
+#include <ByteOrder.h>
+#endif
+
 #ifdef __APPLE__
 #  include "unix/macosx.h"
 #endif /* def __APPLE__ */
@@ -1192,6 +1199,360 @@ ulg filetime(f, a, n, t)
 
 
 #ifndef QLZIP /* QLZIP Unix2QDOS cross-Zip supplies an extended variant */
+#ifdef __HAIKU__
+
+/* Set a file's MIME type. */
+#define BE_FILE_TYPE_NAME   "BEOS:TYPE"
+
+/* ---------------------------------------------------------------------- */
+/* Set a file's MIME type.                                                */
+void setfiletype( const char *file, const char *type )
+{
+    int fd;
+    attr_info fa;
+    ssize_t wrote_bytes;
+
+    fd = open( file, O_RDWR );
+    if( fd < 0 ) {
+        zipwarn( "can't open zipfile to write file type", "" );
+        return;
+    }
+
+    fa.type = B_MIME_STRING_TYPE;
+    fa.size = (off_t)(strlen( type ) + 1);
+
+    wrote_bytes = fs_write_attr( fd, BE_FILE_TYPE_NAME, fa.type, 0,
+                                 type, fa.size );
+    if( wrote_bytes != (ssize_t)fa.size ) {
+        zipwarn( "couldn't write complete file type", "" );
+    }
+
+    close( fd );
+}
+
+/* ----------------------------------------------------------------------
+
+Return a malloc()'d buffer containing all of the attributes and their names
+for the file specified in name.  You have to free() this yourself.  The length
+of the buffer is also returned.
+
+If get_attr_dir() fails, the buffer will be NULL, total_size will be 0,
+and an error will be returned:
+
+    ZE_OK    - no errors occurred
+    ZE_LOGIC - attr_buff was pointing at a buffer
+    ZE_MEM - insufficient memory for attribute buffer
+
+Other errors are possible (whatever is returned by the fs_attr.h functions).
+
+PROBLEMS:
+
+- pointers are 32-bits; attributes are limited to off_t in size so it's
+  possible to overflow... in practice, this isn't too likely... your
+  machine will thrash like hell before that happens
+
+*/
+
+#define INITIAL_BUFF_SIZE 65536
+
+int get_attr_dir( const char *name, char **attr_buff, off_t *total_size )
+{
+    int               retval = ZE_OK;
+    int               fd;
+    DIR              *fa_dir;
+    struct dirent    *fa_ent;
+    off_t             attrs_size;
+    off_t             this_size;
+    char             *ptr;
+    struct attr_info  fa_info;
+    struct attr_info  big_fa_info;
+
+    retval      = ZE_OK;
+    attrs_size  = 0;    /* gcc still says this is used uninitialized... */
+    *total_size = 0;
+
+    /* ----------------------------------------------------------------- */
+    /* Sanity-check.                                                     */
+    if( *attr_buff != NULL ) {
+        return ZE_LOGIC;
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Can we open the file/directory?                                   */
+    /*                                                                   */
+    /* linkput is a zip global; it's set to 1 if we're storing symbolic  */
+    /* links as symbolic links (instead of storing the thing the link    */
+    /* points to)... if we're storing the symbolic link as a link, we'll */
+    /* want the link's file attributes, otherwise we want the target's.  */
+    if( linkput ) {
+        fd = open( name, O_RDONLY | O_NOTRAVERSE );
+    } else {
+        fd = open( name, O_RDONLY );
+    }
+    if( fd < 0 ) {
+        return errno;
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Allocate an initial buffer; 64k should usually be enough.         */
+    *attr_buff = (char *)malloc( INITIAL_BUFF_SIZE );
+    ptr        = *attr_buff;
+    if( ptr == NULL ) {
+        close( fd );
+
+        return ZE_MEM;
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Open the attributes directory for this file.                      */
+    fa_dir = fs_fopen_attr_dir( fd );
+    if( fa_dir == NULL ) {
+        close( fd );
+
+        free( ptr );
+        *attr_buff = NULL;
+
+        return retval;
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Read all the attributes; the buffer could grow > 64K if there are */
+    /* many and/or they are large.                                       */
+    fa_ent = fs_read_attr_dir( fa_dir );
+    while( fa_ent != NULL ) {
+		uint32 attr_type;
+		uint64 attr_size;
+		
+        retval = fs_stat_attr( fd, fa_ent->d_name, &fa_info );
+        /* TODO: check retval != ZE_OK */
+
+        this_size  = strlen( fa_ent->d_name ) + 1;
+        this_size += sizeof(uint32) + sizeof(uint64);
+        this_size += fa_info.size;
+
+        attrs_size += this_size;
+
+        if( attrs_size > INITIAL_BUFF_SIZE ) {
+            unsigned long offset = ptr - *attr_buff;
+
+            *attr_buff = (char *)realloc( *attr_buff, attrs_size );
+            if( *attr_buff == NULL ) {
+                retval = fs_close_attr_dir( fa_dir );
+                /* TODO: check retval != ZE_OK */
+                close( fd );
+
+                return ZE_MEM;
+            }
+
+            ptr = *attr_buff + offset;
+        }
+
+        /* Now copy the data for this attribute into the buffer. */
+        strcpy( ptr, fa_ent->d_name );
+        ptr += strlen( fa_ent->d_name );
+        *ptr++ = '\0';
+
+        /* the attr_info is stored in BigEndian because of PowerPC */
+        attr_type = B_HOST_TO_BENDIAN_INT32( fa_info.type );
+        attr_size = B_HOST_TO_BENDIAN_INT64( fa_info.size );
+        
+        memcpy( ptr, &attr_type, sizeof(uint32)); ptr += sizeof(uint32);
+        memcpy( ptr, &attr_size, sizeof(uint64)); ptr += sizeof(uint64);
+
+        if( fa_info.size > 0 ) {
+            ssize_t read_bytes;
+
+            read_bytes = fs_read_attr( fd, fa_ent->d_name, fa_info.type, 0,
+                                       ptr, fa_info.size );
+            if( read_bytes != fa_info.size ) {
+                /* print a warning about mismatched sizes */
+                char buff[80];
+
+                sprintf( buff, "read %ld, expected %ld",
+                         (ssize_t)read_bytes, (ssize_t)fa_info.size );
+                zipwarn( "attribute size mismatch: ", buff );
+            }
+
+            /* Wave my magic wand... this swaps all the Be types to big- */
+            /* endian automagically.                                     */
+            (void)swap_data( fa_info.type, ptr, fa_info.size,
+                             B_SWAP_HOST_TO_BENDIAN );
+
+            ptr += fa_info.size;
+        }
+
+        fa_ent = fs_read_attr_dir( fa_dir );
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Close the attribute directory.                                    */
+    retval = fs_close_attr_dir( fa_dir );
+    /* TODO: check retval != ZE_OK */
+
+    /* ----------------------------------------------------------------- */
+    /* If the buffer is too big, shrink it.                              */
+    if( attrs_size < INITIAL_BUFF_SIZE ) {
+        *attr_buff = (char *)realloc( *attr_buff, attrs_size );
+        if( *attr_buff == NULL ) {
+            /* This really shouldn't happen... */
+            close( fd );
+
+            return ZE_MEM;
+        }
+    }
+
+    *total_size = attrs_size;
+
+    close( fd );
+
+    return ZE_OK;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Add a 'Be' extra field to the zlist data pointed to by z.              */
+
+#define EB_L_BE_LEN 5           /* min size is an unsigned long and flag */
+#define EB_C_BE_LEN 5           /* Length of data in local EF and flag.  */
+
+#define EB_BE_FL_NATURAL    0x01    /* data is 'natural' (not compressed) */
+
+#define EB_L_BE_SIZE    (EB_HEADSIZE + EB_L_BE_LEN) /* + attr size */
+#define EB_C_BE_SIZE    (EB_HEADSIZE + EB_C_BE_LEN)
+
+/* maximum memcompress overhead is the sum of the compression header length */
+/* (6 = ush compression type, ulg CRC) and the worstcase deflate overhead   */
+/* when uncompressible data are kept in 2 "stored" blocks (5 per block =    */
+/* byte blocktype + 2 * ush blocklength) */
+#define MEMCOMPRESS_OVERHEAD    (EB_MEMCMPR_HSIZ + EB_DEFLAT_EXTRA)
+
+local int add_Be_ef( struct zlist far *z )
+{
+    char *l_ef       = NULL;
+    char *c_ef       = NULL;
+    char *attrbuff   = NULL;
+    off_t attrsize   = 0;
+    char *compbuff   = NULL;
+    ulg   compsize   = 0;
+    uch   flags      = 0;
+
+    /* Check to make sure we've got enough room in the extra fields. */
+    if( z->ext + EB_L_BE_SIZE > USHRT_MAX ||
+        z->cext + EB_C_BE_SIZE > USHRT_MAX ) {
+        return ZE_MEM;
+    }
+
+    /* Attempt to load up a buffer full of the file's attributes. */
+    {
+        int retval;
+
+        retval = get_attr_dir( z->name, &attrbuff, &attrsize );
+        if( retval != ZE_OK ) {
+            return ZE_OPEN;
+        }
+        if( attrsize == 0 ) {
+            return ZE_OK;
+        }
+        if( attrbuff == NULL ) {
+            return ZE_LOGIC;
+        }
+
+        /* Check for way too much data. */
+        if( attrsize > OFF_MAX ) {
+            zipwarn( "uncompressed attributes truncated", "" );
+            attrsize = OFF_MAX - MEMCOMPRESS_OVERHEAD;
+        }
+    }
+
+    if( verbose ) {
+        printf( "\t[in=%lu]", (unsigned long)attrsize );
+    }
+
+    /* Try compressing the data */
+    compbuff = (char *)malloc( (size_t)attrsize + MEMCOMPRESS_OVERHEAD );
+    if( compbuff == NULL ) {
+        return ZE_MEM;
+    }
+    compsize = memcompress( compbuff,
+                            (size_t)attrsize + MEMCOMPRESS_OVERHEAD,
+                            attrbuff,
+                            (size_t)attrsize );
+    if( verbose ) {
+        printf( " [out=%u]", compsize );
+    }
+
+    /* Attempt to optimise very small attributes. */
+    if( compsize > attrsize ) {
+        free( compbuff );
+        compsize = (ush)attrsize;
+        compbuff = attrbuff;
+
+        flags = EB_BE_FL_NATURAL;
+    }
+
+    /* Check to see if we really have enough room in the EF for the data. */
+    if( ( z->ext + compsize + EB_L_BE_SIZE ) > USHRT_MAX ) {
+        zipwarn("not enough space in extra field for attributes\n", "");
+        free( compbuff );
+        return ZE_MEM;
+    }
+
+    /* Allocate memory for the local and central extra fields. */
+    if( z->extra && z->ext != 0 ) {
+        l_ef = (char *)realloc( z->extra, z->ext + EB_L_BE_SIZE + compsize );
+    } else {
+        l_ef = (char *)malloc( EB_L_BE_SIZE + compsize );
+        z->ext = 0;
+    }
+    if( l_ef == NULL ) {
+        return ZE_MEM;
+    }
+    z->extra = l_ef;
+    l_ef += z->ext;
+
+    if( z->cextra && z->cext != 0 ) {
+        c_ef = (char *)realloc( z->cextra, z->cext + EB_C_BE_SIZE );
+    } else {
+        c_ef = (char *)malloc( EB_C_BE_SIZE );
+        z->cext = 0;
+    }
+    if( c_ef == NULL ) {
+        return ZE_MEM;
+    }
+    z->cextra = c_ef;
+    c_ef += z->cext;
+
+    /* Now add the local version of the field. */
+    *l_ef++ = 'B';
+    *l_ef++ = 'e';
+    *l_ef++ = (char)(compsize + EB_L_BE_LEN);
+    *l_ef++ = (char)((compsize + EB_L_BE_LEN) >> 8);
+    *l_ef++ = (char)((unsigned long)attrsize);
+    *l_ef++ = (char)((unsigned long)attrsize >> 8);
+    *l_ef++ = (char)((unsigned long)attrsize >> 16);
+    *l_ef++ = (char)((unsigned long)attrsize >> 24);
+    *l_ef++ = flags;
+    memcpy( l_ef, compbuff, (size_t)compsize );
+
+    z->ext += EB_L_BE_SIZE + compsize;
+
+    /* And the central version. */
+    *c_ef++ = 'B';
+    *c_ef++ = 'e';
+    *c_ef++ = (char)(EB_C_BE_LEN);
+    *c_ef++ = (char)(EB_C_BE_LEN >> 8);
+    *c_ef++ = (char)compsize;
+    *c_ef++ = (char)(compsize >> 8);
+    *c_ef++ = (char)(compsize >> 16);
+    *c_ef++ = (char)(compsize >> 24);
+    *c_ef++ = flags;
+
+    z->cext += EB_C_BE_SIZE;
+
+    return ZE_OK;
+}
+
+#endif
+
 
 int set_new_unix_extra_field(z, s)
   struct zlist far *z;
@@ -1332,6 +1693,7 @@ int set_extra_field(z, z_utim)
   /* store full data in local header but just modification time stamp info
      in central header */
 {
+  int retval;
   z_stat s;
   char *name;
   int len = strlen(z->name);
@@ -1481,7 +1843,13 @@ int set_extra_field(z, z_utim)
 #endif /* never */
 
   /* new unix extra field */
-  set_new_unix_extra_field(z, &s);
+  retval = set_new_unix_extra_field(z, &s);
+  if (retval != ZE_OK)
+      return retval;
+  
+  retval = add_Be_ef(z);
+  if (retval != ZE_OK)
+      return retval;
 
   return ZE_OK;
 }
@@ -1695,13 +2063,14 @@ int wild(w)
 /******************************/
 
 #if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__386BSD__) || \
-    defined(__OpenBSD__) || defined(__bsdi__)
+    defined(__OpenBSD__) || defined(__bsdi__) || defined(__DragonFly__) || \
+	defined(__MidnghtBSD__)
 #include <sys/param.h> /* for the BSD define */
 /* if we have something newer than NET/2 we'll use uname(3) */
 #if (BSD > 199103)
 #include <sys/utsname.h>
 #endif /* BSD > 199103 */
-#endif /* __{Net,Free,Open,386}BSD__ || __bsdi__ */
+#endif /* __{Net,Free,Open,DragonFly,Midnight,386}BSD__ || __bsdi__ */
 
 void version_local()
 {
@@ -1768,14 +2137,14 @@ void version_local()
 #    define COMPILER_NAME compiler_name
 #  else
 #  if defined(__MINGW64__)
-    sprintf( compiler_name, "MinGW 64 GCC %d.%d.%d"),
+    sprintf( compiler_name, "MinGW-64 GCC %d.%d.%d"),
              __GNUC__,
              __GNUC_MINOR__,
              __GNUC_PATCHLEVEL__ );
 #    define COMPILER_NAME compiler_name
 #  else
 #  if defined(__MINGW32__)
-    sprintf( compiler_name, "MinGW 32 GCC %d.%d.%d"),
+    sprintf( compiler_name, "mingw32 GCC %d.%d.%d"),
              __GNUC__,
              __GNUC_MINOR__,
              __GNUC_PATCHLEVEL__ );
@@ -1793,7 +2162,14 @@ void version_local()
 #      define COMPILER_NAME compiler_name
 #    else
 #    if defined(__APPLE_CC__)
-    sprintf( compiler_name, "LLVM Apple GCC %d.%d.%d",
+    sprintf( compiler_name, "Apple LLVM Compiler %d.%d.%d",
+             __GNUC__,
+             __GNUC_MINOR__,
+             __GNUC_PATCHLEVEL__ );
+#      define COMPILER_NAME compiler_name
+#    else
+#    elif defined(__CODEGEARC__)
+    sprintf( compiler_name, "Embarcadero C++ %d.%d.%d",
              __GNUC__,
              __GNUC_MINOR__,
              __GNUC_PATCHLEVEL__ );
@@ -1804,6 +2180,7 @@ void version_local()
              __GNUC_MINOR__,
              __GNUC_PATCHLEVEL__ );
 #      define COMPILER_NAME compiler_name
+#    endif /* (__CODEGEARC__) */
 #    endif /* (__APPLE_CC__) */
 #    endif /* (__clang__) */
 #  else
@@ -1942,20 +2319,42 @@ void version_local()
 #  if defined(UNAME_P) && defined(UNAME_R) && defined(UNAME_S)
 #    define OS_NAME UNAME_S" "UNAME_R" "UNAME_P
 #  else
-#  ifdef sparc
+#  if defined ppc
+#    define OS_NAME "Sun Solaris/PowerPC"
+#  else
+#  if defined(__x86_64__) || defined(__amd64__)
+#    ifdef __illumos__
+#      define OS_NAME "illumos/AMD64"
+#    else
+#      define OS_NAME "Oracle Solaris/x86-64"
+#    endif
+#  else
+#  if defined sparc
 #    ifdef __SVR4
-#      define OS_NAME "Sun SPARC/Solaris"
+#      ifdef __illumos__
+#        define OS_NAME "illumos/SPARC"
+#      else
+#        define OS_NAME "Sun Solaris/SPARC"
+#      endif
 #    else /* may or may not be SunOS */
 #      define OS_NAME "Sun SPARC"
 #    endif
 #  else /* def sparc */
 #  if defined(sun386) || defined(i386)
-#    define OS_NAME "Sun 386i"
+#    ifdef __SVR4
+#      ifdef __illumos__
+#        define OS_NAME "illumos/x86"
+#      else
+#        define OS_NAME "Sun Solaris/Intel"
+#      endif
+#    else
+#      define OS_NAME "Sun386i"
+#    endif
 #  else /* defined(sun386) || defined(i386) */
 #  if defined(mc68020) || defined(__mc68020__)
-#    define OS_NAME "Sun 3"
+#    define OS_NAME "Sun-3"
 #  else /* mc68010 or mc68000:  Sun 2 or earlier */
-#    define OS_NAME "Sun 2"
+#    define OS_NAME "Sun-2"
 #  endif /* defined(mc68020) || defined(__mc68020__) [else] */
 #  endif /* defined(sun386) || defined(i386) [else] */
 #  endif /* def sparc [else] */
@@ -1970,7 +2369,7 @@ void version_local()
 #else
 #ifdef __osf__
 #  if defined( SIZER_V)
-#    define OS_NAME "Tru64 "SIZER_V
+#    define OS_NAME "Compaq Tru64 "SIZER_V
 #  else /* defined( SIZER_V) */
 #    define OS_NAME "DEC OSF/1"
 #  endif /* defined( SIZER_V) [else] */
@@ -2013,9 +2412,22 @@ void version_local()
 #ifdef NeXT
 #  ifdef mc68000
 #    define OS_NAME "NeXTStep/black"
+#  elif defined i386
+#    define OS_NAME "NeXTSTEP/white"
+#  elif defined sparc
+#    define OS_NAME "NEXTSTEP/SPARC"
+#  elif defined mips
+#    define OS_NAME "NEXTSTEP/MIPS"
+#  elif defined hppa
+#    define OS_NAME "NEXTSTEP/PA-RISC"
+#  elif defined ppc
+#    define OS_NAME "Apple Rhapsody PowerPC"
 #  else
-#    define OS_NAME "NeXTStep for Intel"
+#    define OS_NAME "Other OpenSTEP Machine"
 #  endif
+#else
+#ifdef __ANDROID__
+#  define OS_NAME "Android"
 #else
 #if defined(linux) || defined(__linux__)
 #  if defined( UNAME_M) && defined( UNAME_O)
@@ -2029,46 +2441,53 @@ void version_local()
 #  endif
 #else
 #ifdef MINIX
-#  define OS_NAME "Minix"
+#  define OS_NAME "MINIX"
 #else
 #ifdef M_UNIX
-#  define OS_NAME "SCO Unix"
+#  define OS_NAME "SCO UNIX"
+#else
+#ifdef defined(sco) || defined(_UNIXWARE7) || defined(__UNIXWARE__)
+#  define OS_NAME "SCO UnixWare"
+#else
+#ifdef _SCO_DS
+#  define OS_NAME "SCO OpenServer" 
 #else
 #ifdef M_XENIX
-#  define OS_NAME "SCO Xenix"
+#  define OS_NAME "Xenix"
 #else
-#if defined( BSD) && !defined( __APPLE__)
+#if defined( BSD) && !defined( __APPLE__) 
 # if (BSD > 199103)
 #    define OS_NAME os_name
     uname(&u);
     sprintf(os_name, "%s %s", u.sysname, u.release);
 # else /* (BSD > 199103) */
-# ifdef __NetBSD__
-#   define OS_NAME os_name
-#   ifdef NetBSD0_8
-      sprintf(os_name, "NetBSD 0.8%s", netbsd[NetBSD0_8]);
-#   else
-#   ifdef NetBSD0_9
-      sprintf(os_name, "NetBSD 0.9%s", netbsd[NetBSD0_9]);
-#   else
-#   ifdef NetBSD1_0
-      sprintf(os_name, "NetBSD 1.0%s", netbsd[NetBSD1_0]);
-#   endif /* NetBSD1_0 */
-#   endif /* NetBSD0_9 */
-#   endif /* NetBSD0_8 */
+# ifdef __NetBSD__ /* Prune now-useless version checks */
+#    define OS_NAME "NetBSD"
 # else
 # ifdef __FreeBSD__
-#    define OS_NAME "FreeBSD 1.x"
+#    define OS_NAME "FreeBSD"
+# else
+# ifdef __OpenBSD__
+#    define OS_NAME "OpenBSD"
+# else
+# ifdef __DragonFly__
+#    define OS_NAME "DragonFly BSD"
+# else
+# ifdef __MidnightBSD__
+#    define OS_NAME "MidnightBSD"
 # else
 # ifdef __bsdi__
-#    define OS_NAME "BSD/386 1.0"
+#    define OS_NAME "BSD/386"
 # else
 # ifdef __386BSD__
 #    define OS_NAME "386BSD"
 # else
-#    define OS_NAME "Unknown BSD"
+#    define OS_NAME "Some kinda Berkeley thing"
 # endif /* __386BSD__ */
 # endif /* __bsdi__ */
+# endif /* MidnightBSD */
+# endif /* DragonFly BSD */
+# endif /* OpenBSD */
 # endif /* FreeBSD */
 # endif /* NetBSD */
 # endif /* (BSD > 199103) [else] */
@@ -2077,16 +2496,22 @@ void version_local()
 #  define OS_NAME "Cygwin"
 #else
 #if defined(i686) || defined(__i686) || defined(__i686__)
-#  define OS_NAME "Intel 686"
+#  define OS_NAME "Intel Pentium Pro"
 #else
 #if defined(i586) || defined(__i586) || defined(__i586__)
-#  define OS_NAME "Intel 586"
+#  define OS_NAME "Intel Pentium"
 #else
 #if defined(i486) || defined(__i486) || defined(__i486__)
 #  define OS_NAME "Intel 486"
 #else
 #if defined(i386) || defined(__i386) || defined(__i386__)
 #  define OS_NAME "Intel 386"
+#else
+#if defined(__riscv)
+#  define OS_NAME "RISC-V"
+#else
+#if defined(__loongarch__)
+#  define OS_NAME "LoongArch"
 #else
 #ifdef pyr
 #  define OS_NAME "Pyramid"
@@ -2105,11 +2530,20 @@ void version_local()
 #ifdef gould
 #  define OS_NAME "Gould"
 #else
+#ifdef __HAIKU__
+#  define OS_NAME "Haiku"
+#else
 #ifdef MTS
 #  define OS_NAME "MTS"
 #else
 #ifdef __convexc__
 #  define OS_NAME "Convex"
+#else
+#ifdef __INTEGRITY
+#  define OS_NAME "INTEGRITY"
+#else
+#ifdef __INTERIX
+#  define OS_NAME "Interix Environment"
 #else
 #ifdef __QNX__
 #  define OS_NAME "QNX 4"
@@ -2128,9 +2562,17 @@ void version_local()
 #      define OS_NAME "Mac OS X PowerPC"
 #    else /* __ppc__ */
 #      ifdef __ppc64__
-#        define OS_NAME "Mac OS X PowerPC64"
+#        define OS_NAME "Mac OS X PowerPC, 64-bit"
 #      else /* __ppc64__ */
-#        define OS_NAME "Mac OS X"
+#        ifdef __x86_64__
+#          define OS_NAME "macOS x86-64"
+#        else /* __x86_64__ */
+#          ifdef __aarch64__
+#            define OS_NAME "macOS Apple Silicon"
+#            else /* __aarch64__ */
+#              define OS_NAME "One Strange Apple"
+#          endif /* __aarch64__ */
+#        endif /* __x86_64__ */
 #      endif /* __ppc64__ */
 #    endif /* __ppc__ */
 #  endif /* __i386__ */
@@ -2140,21 +2582,29 @@ void version_local()
 #endif /* Apple */
 #endif /* QNX Neutrino */
 #endif /* QNX 4 */
+#endif /* Interix */
+#endif /* INTEGRITY */
 #endif /* Convex */
 #endif /* MTS */
+#endif /* Haiku */
 #endif /* Gould */
 #endif /* DEC */
 #endif /* Pyramid */
+#endif /* LoongArch */
+#endif /* RISC-V */
 #endif /* 386 */
 #endif /* 486 */
 #endif /* 586 */
 #endif /* 686 */
 #endif /* Cygwin */
 #endif /* defined( BSD) & !defined( __APPLE__) */
-#endif /* SCO Xenix */
-#endif /* SCO Unix */
-#endif /* Minix */
+#endif /* Xenix */
+#endif /* SCO OpenServer */
+#endif /* SCO UnixWare */
+#endif /* SCO UNIX */
+#endif /* MINIX */
 #endif /* Linux */
+#endif /* Android */
 #endif /* NeXT */
 #endif /* Amdahl */
 #endif /* Cray */

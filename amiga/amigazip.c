@@ -446,15 +446,30 @@ void version_local()
 /* format "with" name strings */
 
 #ifdef AMIGA
-# ifdef __SASC
-   strcpy(buf1,"SAS/C ");
-# else
-#  ifdef LATTICE
+# ifdef LATTICE
+#  ifdef __SASC
+    strcpy(buf1,"SAS/C ");
+#  else
     strcpy(buf1,"Lattice C ");
+#  endif
 #  else
 #   ifdef AZTEC_C
      strcpy(buf1,"Manx Aztec C ");
 #   else
+#    ifdef __GNUC__
+     strcpy(buf1,"GNU C ");
+#     else
+#      ifdef __VBCC__
+     strcpy(buf1,"VBCC ");
+#      else
+#       ifdef __STORM__
+     strcpy(buf1,"StormC ");
+#       else
+     strcpy(buf1,"UNKNOWN ");
+#       endif
+#      endif
+#     endif
+#    else
      strcpy(buf1,"Unknown C ");
 #   endif
 #  endif

@@ -130,6 +130,7 @@
 # implicitly detected by compiler configuration tests.
 #
 # Supported ports include:
+#   haiku : Haiku port
 #   msdos : DOS port built using the DJGPP (or Cygwin) cross-compiler
 #   os2   : OS/2 port
 #   qdos  : Sinclair Q-DOS port built using a gcc cross-compiler
