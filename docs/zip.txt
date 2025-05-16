@@ -4370,7 +4370,7 @@ BUGS
        when  DIRing  a  file.   However,  the structure layout returned by the
        32-bit DosQueryPathInfo() is a bit different,  it  uses  extra  padding
        bytes  and  link  pointers  (it's  a linked list) to have all fields on
-       4-byte boundaries for portability to future RISC OS/2 versions.  There-
+       4-byte  boundaries  for  portability  to  future OS/2 versions.  There-
        fore  the value reported by zip (which uses this 32-bit-mode size) dif-
        fers from that reported by DIR.   zip  stores  the  32-bit  format  for
        portability, even the 16-bit MS-C-compiled version running on OS/2 1.3,
