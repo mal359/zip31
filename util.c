@@ -110,7 +110,7 @@ ZCONST char *p;         /* candidate sh expression */
 #ifdef VMS
     else if (*p == WILDCHR_SINGLE || *p == WILDCHR_MULTI)
 #else /* !VMS */
-    else if (*p == WILDCHR_SINGLE || *p == WILDCHR_MULTI || *p == '[')
+    else if (*p == WILDCHR_SINGLE || *p == WILDCHR_MULTI || *p == '[' && allow_regex)
 #endif /* ?VMS */
       return (char *)p;
   return NULL;
@@ -127,7 +127,7 @@ wchar_t *isshexpw(pw)
     if (*pw == (wchar_t)'\\' && *(pw+1))
       pw++;
     else if (*pw == (wchar_t)WILDCHR_SINGLE || *pw == (wchar_t)WILDCHR_MULTI ||
-             *pw == (wchar_t)'[')
+             *pw == (wchar_t)'[' && allow_regex)
       return (wchar_t *)pw;
   return NULL;
 }
