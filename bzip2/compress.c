@@ -120,8 +120,7 @@ static
 void generateMTFValues ( EState* s )
 {
    UChar   yy[256];
-   Int32   i; 
-   ptrdiff_t j;
+   Int32   i, j;
    Int32   zPend;
    Int32   wr;
    Int32   EOB;
@@ -141,7 +140,7 @@ void generateMTFValues ( EState* s )
       with MTF values only when they are no longer needed.
 
       The final compressed bitstream is generated into the
-      area starting a
+      area starting at
          (UChar*) (&((UChar*)s->arr2)[s->nblock])
 
       These storage aliases are set up in bzCompressInit(),
@@ -150,17 +149,16 @@ void generateMTFValues ( EState* s )
    */
    UInt32* ptr   = s->ptr;
    UChar* block  = s->block;
-   UInt32* mtfv  = (UInt32*)s->mtfv;
+   UInt16* mtfv  = s->mtfv;
 
    makeMaps_e ( s );
    EOB = s->nInUse+1;
 
-   for (i = 0; i < 256; i++) yy[i] = (UChar) i;
-
-   for (i = 0; i <= s->nInUse + 1; i++) s->mtfFreq[i] = 0;
+   for (i = 0; i <= EOB; i++) s->mtfFreq[i] = 0;
 
    wr = 0;
    zPend = 0;
+   for (i = 0; i < s->nInUse; i++) yy[i] = (UChar) i;
 
    for (i = 0; i < s->nblock; i++) {
       UChar ll_i;
@@ -204,8 +202,15 @@ void generateMTFValues ( EState* s )
                *ryy_j = rtmp2;
             };
             yy[0] = rtmp;
-            j = ryy_j - &(yy[0]);
-            mtfv[wr] = (UInt16)(j+1); wr++; s->mtfFreq[j+1]++;
+			
+            /* 2015-04-07 EG for Info-ZIP.
+             * ryy_j is a pointer, which becomes 64-bit when compiled
+             * as 64-bit on Windows.  The cast is needed to quiet a
+             * compiler warning assigning to Int32 j.
+             */
+            j = (Int32)(ryy_j - &(yy[0]));
+			
+            mtfv[wr] = j+1; wr++; s->mtfFreq[j+1]++;
          }
 
       }

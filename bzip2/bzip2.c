@@ -28,7 +28,7 @@
 #if defined(__VMS)
 #undef  BZ_UNIX
 #define BZ_VMS       1
-#define VERSION_SUFFIX "c"
+#define VERSION_SUFFIX "d"
 /* Accommodation for /NAMES = AS_IS with old header files. */
 #define cma$tis_errno_get_addr CMA$TIS_ERRNO_GET_ADDR
 #endif /* defined(__VMS) */
@@ -332,6 +332,7 @@ static void    compressedStreamEOF   ( void )        NORETURN;
 static void    copyFileName ( Char*, Char* );
 static void*   myMalloc     ( Int32 );
 static void    applySavedFileAttrToOutputFile ( IntNative fd );
+static void    applySavedTimeInfoToOutputFile ( Char *dstName );
 
 
 
@@ -479,6 +480,7 @@ void compressStream ( FILE *stream, FILE *zStream )
    if (zStream != stdout) {
       Int32 fd = fileno ( zStream );
       if (fd < 0) goto errhandler_io;
+      applySavedTimeInfoToOutputFile ( outName ); 
       applySavedFileAttrToOutputFile ( fd );
       ret = fclose ( zStream );
       outputHandleJustInCase = NULL;
@@ -592,17 +594,18 @@ Bool uncompressStream ( FILE *zStream, FILE *stream )
 
    closeok:
    if (ferror(zStream)) goto errhandler_io;
+   ret = fflush ( stream );
+   if (ret != 0) goto errhandler_io;
    if (stream != stdout) {
       Int32 fd = fileno ( stream );
       if (fd < 0) goto errhandler_io;
+      applySavedTimeInfoToOutputFile ( outName );
       applySavedFileAttrToOutputFile ( fd );
    }
    ret = fclose ( zStream );
    if (ret == EOF) goto errhandler_io;
 
    if (ferror(stream)) goto errhandler_io;
-   ret = fflush ( stream );
-   if (ret != 0) goto errhandler_io;
    if (stream != stdout) {
       ret = fclose ( stream );
       outputHandleJustInCase = NULL;
@@ -1163,7 +1166,7 @@ struct MY_STAT fileMetaInfo;
 static 
 void saveInputFileMetaInfo ( Char *srcName )
 {
-#  if BZ_UNIX | BZ_VMS
+#if BZ_UNIX | BZ_VMS
    IntNative retVal;
    /* Note use of stat here, not lstat. */
    retVal = MY_STAT( srcName, &fileMetaInfo );
@@ -1197,13 +1200,13 @@ void applySavedFileAttrToOutputFile ( IntNative fd )
 
    retVal = fchmod ( fd, fileMetaInfo.st_mode );
    ERROR_IF_NOT_ZERO ( retVal );
-
+   
 #ifndef __WATCOMC__
    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );
    /* chown() will in many cases return with EPERM, which can
       be safely ignored.
    */
-#endif
+#  endif
 #  endif
 }
 
@@ -1243,7 +1246,7 @@ Bool containsDubiousChars ( Char* name )
 #if ACCEPT_VMS_SUFFIXES
 #  define BZ_N_SUFFIX_PAIRS 6
 #else /* ACCEPT_VMS_SUFFIXES */
-#  define BZ_N_SUFFIX_PAIRS 4
+#define BZ_N_SUFFIX_PAIRS 4
 #endif /* ACCEPT_VMS_SUFFIXES [else] */
 
 const Char* zSuffix[BZ_N_SUFFIX_PAIRS] 
@@ -1510,7 +1513,7 @@ void uncompress ( Char *name )
    Bool  magicNumberOK;
    Bool  cantGuess;
    struct MY_STAT statBuf;
-
+   
 #if BZ_VMS
 #  define EXT_OUT "-out"
 #else /* BZ_VMS */
@@ -2154,7 +2157,6 @@ IntNative main ( IntNative argc, Char *argv[] )
                case 'L': license();
                          exit ( 0 );
                          break;
-						
                case 'v': verbosity++; break;
                case 'h': usage ( progName );
                          exit ( 0 );
@@ -2215,7 +2217,7 @@ IntNative main ( IntNative argc, Char *argv[] )
    if (srcMode == SM_F2F) {
       signal (SIGINT,  mySignalCatcher);
       signal (SIGTERM, mySignalCatcher);
-#     if BZ_UNIX
+#     if BZ_UNIX && !defined __WATCOMC__
       signal (SIGHUP,  mySignalCatcher);
 #     endif
    }
